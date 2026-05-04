@@ -20,7 +20,6 @@ export default function Dashboard() {
       .order('created_at', { ascending: false });
 
     if (!error && data) {
-      // Fetch reputation for each agent
       const agentsWithRep = await Promise.all(
         data.map(async (agent) => {
           const { data: rep } = await supabase
@@ -40,7 +39,6 @@ export default function Dashboard() {
     if (!newAgentName.trim()) return;
     setCreating(true);
 
-    // Generate a temporary public key (in production, agents would provide their own)
     const tempPublicKey = `temp_key_${Date.now()}`;
 
     const response = await fetch('/api/agents/register', {
@@ -69,7 +67,6 @@ export default function Dashboard() {
       <div className="max-w-6xl mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-8">Developer Dashboard</h1>
 
-        {/* Create Agent Form */}
         <div className="bg-white rounded-lg shadow p-6 mb-8">
           <h2 className="text-xl font-semibold mb-4">Create New Agent</h2>
           <div className="flex gap-4">
@@ -90,7 +87,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Agents List */}
         <div className="bg-white rounded-lg shadow">
           <div className="p-6 border-b">
             <h2 className="text-xl font-semibold">Your Agents</h2>
