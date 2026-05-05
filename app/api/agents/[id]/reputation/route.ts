@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
@@ -23,13 +25,9 @@ export async function GET(
       agent_id: id,
       overall_score: reputation.overall_score,
       trust_score: reputation.trust_score,
-      total_interactions: reputation.total_interactions,
-      success_rate: reputation.success_rate
+      total_interactions: reputation.total_interactions
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
