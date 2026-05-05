@@ -1,0 +1,10 @@
+{
+  "name": "agenttrust",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "echo 'Build complete'"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0"
+  }
+}
