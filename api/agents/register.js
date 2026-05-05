@@ -1,23 +1,5 @@
 import { supabase } from '../../lib/supabase.js';
 
-function generateApiKey() {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = 'ak_';
-  for (let i = 0; i < 32; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-}
-
-function generateHash() {
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  for (let i = 0; i < 32; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-}
-
 export default async function handler(req, res) {
   // Allow CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -44,54 +26,49 @@ export default async function handler(req, res) {
       });
     }
 
-    // Insert agent into database
+    // Test the database connection first
+    const { data: testData, error: testError } = await supabase
+      .from('agents')
+      .select('count')
+      .limit(1);
+
+    if (testError) {
+      console.error('Database connection error:', testError);
+      return res.status(500).json({ 
+        error: 'Database connection failed: ' + testError.message
+      });
+    }
+
+    // Try a simple insert without API key generation
     const { data: agent, error } = await supabase
       .from('agents')
       .insert({
-        name,
-        owner_email,
-        public_key,
+        name: name,
+        owner_email: owner_email,
+        public_key: public_key,
         verification_level: 'unverified'
       })
       .select()
       .single();
 
     if (error) {
-      console.error('Supabase insert error:', error);
-      return res.status(500).json({ error: error.message });
+      console.error('Insert error:', error);
+      return res.status(500).json({ 
+        error: 'Insert failed: ' + error.message
+      });
     }
 
-    // Generate API key (without crypto)
-    const apiKey = generateApiKey();
-    const keyHash = generateHash();
-
-    // Store API key
-    const { error: keyError } = await supabase.from('api_keys').insert({
-      agent_id: agent.id,
-      key_hash: keyHash,
-      key_prefix: apiKey.slice(0, 8)
-    });
-
-    if (keyError) {
-      console.error('API key insert error:', keyError);
-      return res.status(500).json({ error: keyError.message });
-    }
-
-    // Return success response
+    // Return success
     return res.status(200).json({
       success: true,
-      agent: {
-        id: agent.id,
-        name: agent.name,
-        verification_level: agent.verification_level,
-        created_at: agent.created_at
-      },
-      api_key: apiKey,
-      message: 'Agent registered successfully. Save your API key!'
+      message: 'Agent registered successfully!',
+      agent: agent
     });
 
   } catch (error) {
     console.error('Registration error:', error);
-    return res.status(500).json({ error: 'Internal server error: ' + error.message });
+    return res.status(500).json({ 
+      error: 'Server error: ' + error.message
+    });
   }
 }
