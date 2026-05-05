@@ -2,25 +2,22 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { randomBytes } from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: Request) {
   try {
     const { name, owner_email, public_key } = await request.json();
 
     if (!name || !owner_email || !public_key) {
       return NextResponse.json(
-        { error: 'Missing required fields: name, owner_email, public_key' },
+        { error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
     const { data: agent, error } = await supabase
       .from('agents')
-      .insert({
-        name,
-        owner_email,
-        public_key,
-        verification_level: 'unverified'
-      })
+      .insert({ name, owner_email, public_key, verification_level: 'unverified' })
       .select()
       .single();
 
@@ -39,18 +36,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      agent: {
-        id: agent.id,
-        name: agent.name,
-        verification_level: agent.verification_level
-      },
-      api_key: apiKey,
-      message: 'Agent registered successfully. Save your API key!'
+      agent: { id: agent.id, name: agent.name },
+      api_key: apiKey
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
