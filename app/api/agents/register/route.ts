@@ -1,23 +1,28 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { randomBytes } from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   try {
-    const { name, owner_email, public_key } = await request.json();
+    const { from_agent_id, to_agent_id, outcome, type, rating } = await request.json();
 
-    if (!name || !owner_email || !public_key) {
+    if (!from_agent_id || !to_agent_id || !outcome) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
-    const { data: agent, error } = await supabase
-      .from('agents')
-      .insert({ name, owner_email, public_key, verification_level: 'unverified' })
+    const { data: interaction, error } = await supabase
+      .from('interactions')
+      .insert({
+        from_agent_id,
+        to_agent_id,
+        outcome,
+        type: type || 'api_call',
+        rating
+      })
       .select()
       .single();
 
@@ -25,19 +30,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const apiKey = `ak_${randomBytes(32).toString('base64url')}`;
-    const keyHash = randomBytes(32).toString('hex');
-
-    await supabase.from('api_keys').insert({
-      agent_id: agent.id,
-      key_hash: keyHash,
-      key_prefix: apiKey.slice(0, 8)
+    return NextResponse.json({
+      success: true,
+      interaction
     });
+  } catch (error) {
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const agentId = searchParams.get('agent_id');
+
+    if (!agentId) {
+      return NextResponse.json({ error: 'agent_id required' }, { status: 400 });
+    }
+
+    const { data: interactions, error } = await supabase
+      .from('interactions')
+      .select('*')
+      .eq('to_agent_id', agentId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
 
     return NextResponse.json({
       success: true,
-      agent: { id: agent.id, name: agent.name },
-      api_key: apiKey
+      interactions
     });
   } catch (error) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
