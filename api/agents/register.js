@@ -13,62 +13,43 @@ export default async function handler(req, res) {
 
   // Only allow POST requests
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed. Use POST.' });
+    return res.status(405).json({ error: 'Use POST method' });
   }
 
   try {
     const { name, owner_email, public_key } = req.body;
 
-    // Validate required fields
     if (!name || !owner_email || !public_key) {
       return res.status(400).json({ 
-        error: 'Missing required fields: name, owner_email, public_key' 
+        error: 'Missing: name, owner_email, public_key' 
       });
     }
 
-    // Test the database connection first
-    const { data: testData, error: testError } = await supabase
-      .from('agents')
-      .select('count')
-      .limit(1);
-
-    if (testError) {
-      console.error('Database connection error:', testError);
-      return res.status(500).json({ 
-        error: 'Database connection failed: ' + testError.message
-      });
-    }
-
-    // Try a simple insert without API key generation
+    // Insert into database
     const { data: agent, error } = await supabase
       .from('agents')
-      .insert({
-        name: name,
-        owner_email: owner_email,
-        public_key: public_key,
-        verification_level: 'unverified'
-      })
-      .select()
-      .single();
+      .insert([
+        {
+          name: name,
+          owner_email: owner_email,
+          public_key: public_key,
+          verification_level: 'unverified'
+        }
+      ])
+      .select();
 
     if (error) {
-      console.error('Insert error:', error);
-      return res.status(500).json({ 
-        error: 'Insert failed: ' + error.message
-      });
+      console.error('DB Error:', error);
+      return res.status(500).json({ error: error.message });
     }
 
-    // Return success
     return res.status(200).json({
       success: true,
-      message: 'Agent registered successfully!',
-      agent: agent
+      agent: agent[0]
     });
 
   } catch (error) {
-    console.error('Registration error:', error);
-    return res.status(500).json({ 
-      error: 'Server error: ' + error.message
-    });
+    console.error('Error:', error);
+    return res.status(500).json({ error: error.message });
   }
 }
