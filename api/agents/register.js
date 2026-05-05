@@ -1,5 +1,22 @@
 import { supabase } from '../../lib/supabase.js';
-import { randomBytes } from 'crypto';
+
+function generateApiKey() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = 'ak_';
+  for (let i = 0; i < 32; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
+function generateHash() {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < 32; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
 
 export default async function handler(req, res) {
   // Allow CORS
@@ -44,9 +61,9 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: error.message });
     }
 
-    // Generate API key
-    const apiKey = `ak_${randomBytes(32).toString('base64url')}`;
-    const keyHash = randomBytes(32).toString('hex');
+    // Generate API key (without crypto)
+    const apiKey = generateApiKey();
+    const keyHash = generateHash();
 
     // Store API key
     const { error: keyError } = await supabase.from('api_keys').insert({
@@ -75,6 +92,6 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Registration error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: 'Internal server error: ' + error.message });
   }
 }
