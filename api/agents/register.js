@@ -1,5 +1,3 @@
-import { supabase } from '../../lib/supabase.js';
-
 export default async function handler(req, res) {
   // Allow CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -25,31 +23,18 @@ export default async function handler(req, res) {
       });
     }
 
-    // Insert into database
-    const { data: agent, error } = await supabase
-      .from('agents')
-      .insert([
-        {
-          name: name,
-          owner_email: owner_email,
-          public_key: public_key,
-          verification_level: 'unverified'
-        }
-      ])
-      .select();
-
-    if (error) {
-      console.error('DB Error:', error);
-      return res.status(500).json({ error: error.message });
-    }
-
+    // Return a mock success (no database for now)
     return res.status(200).json({
       success: true,
-      agent: agent[0]
+      agent: {
+        id: 'mock_' + Date.now(),
+        name: name,
+        owner_email: owner_email,
+        verification_level: 'unverified'
+      },
+      api_key: 'ak_mock_' + Math.random().toString(36).substring(2)
     });
-
-  } catch (error) {
-    console.error('Error:', error);
-    return res.status(500).json({ error: error.message });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
   }
 }
