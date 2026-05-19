@@ -1,68 +1,54 @@
-import { supabase } from '../../lib/supabase.js';
+// ----- REGISTRATION (REAL Supabase insert) -----
+if (url === '/api/agents/register' && method === 'POST') {
+  const { name, owner_email, public_key } = req.body;
+  if (!name || !owner_email || !public_key)
+    return res.status(400).json({ error: 'Missing fields' });
 
-export default async function handler(req, res) {
-  // CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  try {
+    // 1. Insert the new agent
+    const { data: agent, error: insertError } = await supabase
+      .from('agents')
+      .insert([{
+        name,
+        owner_email,
+        public_key,
+        verification_level: 'unverified'
+      }])
+      .select()
+      .single();
 
-  const url = req.url;
-  const method = req.method;
+    if (insertError) throw insertError;
 
-  // ----- REGISTRATION (mock for now – replace later) -----
-  if (url === '/api/agents/register' && method === 'POST') {
-    const { name, owner_email, public_key } = req.body;
-    if (!name || !owner_email || !public_key)
-      return res.status(400).json({ error: 'Missing fields' });
+    // 2. Generate a real API key (random string)
+    const apiKey = 'ak_' + Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
+
+    // 3. Store the API key hash (using a simple hash for now)
+    const simpleHash = require('crypto').createHash('sha256').update(apiKey).digest('hex');
+
+    const { error: keyError } = await supabase
+      .from('api_keys')
+      .insert([{
+        agent_id: agent.id,
+        key_hash: simpleHash,
+        key_prefix: apiKey.substring(0, 8)
+      }]);
+
+    if (keyError) throw keyError;
+
+    // 4. Return success with real agent and API key
     return res.status(200).json({
       success: true,
-      agent: { id: 'mock_' + Date.now(), name, owner_email, verification_level: 'unverified' },
-      api_key: 'ak_mock_' + Math.random().toString(36).substring(2)
+      agent: {
+        id: agent.id,
+        name: agent.name,
+        owner_email: agent.owner_email,
+        verification_level: agent.verification_level
+      },
+      api_key: apiKey,
+      message: 'Agent registered successfully. Save your API key!'
     });
+  } catch (err) {
+    console.error('Registration error:', err);
+    return res.status(500).json({ error: err.message });
   }
-
-  // ----- REPUTATION (REAL Supabase query) -----
-  const match = url.match(/^\/api\/agents\/([^\/]+)\/reputation$/);
-  if (match && method === 'GET') {
-    const agentId = match[1];
-    try {
-      const { data, error } = await supabase
-        .from('reputation_scores')
-        .select('overall_score, trust_score, total_interactions, success_rate')
-        .eq('agent_id', agentId)
-        .single();
-
-      if (error && error.code !== 'PGRST116') throw error;
-
-      return res.status(200).json({
-        success: true,
-        agent_id: agentId,
-        overall_score: data?.overall_score ?? 50,
-        trust_score: data?.trust_score ?? 50,
-        total_interactions: data?.total_interactions ?? 0,
-        success_rate: data?.success_rate ?? null
-      });
-    } catch (err) {
-      console.error(err);
-      return res.status(500).json({ error: 'Failed to fetch reputation' });
-    }
-  }
-
-  // ----- INTERACTIONS (mock – add real later) -----
-  if (url === '/api/interactions' && method === 'GET') {
-    return res.status(200).json({ success: true, interactions: [] });
-  }
-  if (url === '/api/interactions' && method === 'POST') {
-    const { from_agent, to_agent, outcome } = req.body;
-    return res.status(200).json({ success: true, message: 'Recorded', interaction: { from_agent, to_agent, outcome } });
-  }
-
-  // ----- HEALTH -----
-  if (url === '/api/hello' && method === 'GET')
-    return res.status(200).json({ message: 'AgentTrust API ready', status: 'online' });
-  if (url === '/api/ping' && method === 'GET')
-    return res.status(200).send('pong');
-
-  return res.status(404).json({ error: 'Endpoint not found' });
 }
