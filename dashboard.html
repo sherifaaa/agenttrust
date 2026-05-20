@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgentTrust Developer Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #f3f4f6;
+            padding: 2rem;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #2563EB;
+            margin-bottom: 1rem;
+        }
+        .card {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .card h2 {
+            margin-bottom: 1rem;
+            font-size: 1.25rem;
+        }
+        input, button {
+            padding: 0.5rem 1rem;
+            margin-right: 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+        }
+        button {
+            background: #2563EB;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #1D4ED8;
+        }
+        pre {
+            background: #1e1e2f;
+            color: #fff;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            margin-top: 1rem;
+        }
+        .agent-list {
+            margin-top: 1rem;
+        }
+        .agent-item {
+            border-bottom: 1px solid #e5e7eb;
+            padding: 1rem 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .agent-name {
+            font-weight: bold;
+        }
+        .agent-rep {
+            color: #059669;
+        }
+        .error {
+            color: #dc2626;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🤖 AgentTrust Developer Dashboard</h1>
+
+    <!-- Registration section -->
+    <div class="card">
+        <h2>➕ Register a new agent</h2>
+        <input type="text" id="agentName" placeholder="Agent name">
+        <input type="email" id="agentEmail" placeholder="Owner email">
+        <input type="text" id="agentPubKey" placeholder="Public key">
+        <button onclick="registerAgent()">Register</button>
+        <div id="regResult"></div>
+    </div>
+
+    <!-- List agents (mock, from reputation endpoint per agent) -->
+    <div class="card">
+        <h2>📋 Your Agents</h2>
+        <button onclick="loadAgents()">Refresh Agents</button>
+        <div id="agentsList" class="agent-list"></div>
+    </div>
+
+    <!-- Check reputation -->
+    <div class="card">
+        <h2>🔍 Check agent reputation</h2>
+        <input type="text" id="repAgentId" placeholder="Agent UUID">
+        <button onclick="checkReputation()">Check</button>
+        <div id="repResult"></div>
+    </div>
+</div>
+
+<script>
+    const API_BASE = 'https://agenttrust-8fjl.vercel.app/api';
+
+    async function registerAgent() {
+        const name = document.getElementById('agentName').value;
+        const email = document.getElementById('agentEmail').value;
+        const pubKey = document.getElementById('agentPubKey').value;
+        if (!name || !email || !pubKey) {
+            alert('Please fill all fields');
+            return;
+        }
+        try {
+            const res = await fetch(`${API_BASE}/agents/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, owner_email: email, public_key: pubKey })
+            });
+            const data = await res.json();
+            document.getElementById('regResult').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            if (data.success) {
+                loadAgents();
+            }
+        } catch (err) {
+            document.getElementById('regResult').innerHTML = `<pre class="error">Error: ${err.message}</pre>`;
+        }
+    }
+
+    async function loadAgents() {
+        // For a real dashboard, you'd have an endpoint like /api/agents?owner_email=...
+        // Since we don't have that yet, we'll show a message and allow manual reputation checks.
+        const agentsListDiv = document.getElementById('agentsList');
+        agentsListDiv.innerHTML = '<p>To list agents, please use Supabase Table Editor. Here is a demo manual entry:</p>';
+        agentsListDiv.innerHTML += `
+            <div class="agent-item">
+                <span class="agent-name">Demo Agent:</span>
+                <input type="text" id="manualAgentId" placeholder="Paste Agent UUID here" style="flex:1; margin:0 1rem;">
+                <button onclick="checkReputationById()">Check Rep</button>
+            </div>
+        `;
+    }
+
+    async function checkReputation() {
+        const agentId = document.getElementById('repAgentId').value;
+        if (!agentId) {
+            alert('Enter an agent UUID');
+            return;
+        }
+        await fetchReputation(agentId);
+    }
+
+    async function checkReputationById() {
+        const agentId = document.getElementById('manualAgentId').value;
+        if (!agentId) return;
+        await fetchReputation(agentId);
+    }
+
+    async function fetchReputation(agentId) {
+        try {
+            const res = await fetch(`${API_BASE}/agents/${agentId}/reputation`);
+            const data = await res.json();
+            document.getElementById('repResult').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+        } catch (err) {
+            document.getElementById('repResult').innerHTML = `<pre class="error">Error: ${err.message}</pre>`;
+        }
+    }
+</script>
+</body>
+</html>
