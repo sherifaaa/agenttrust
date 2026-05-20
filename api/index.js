@@ -1,54 +1,44 @@
-// ----- REGISTRATION (REAL Supabase insert) -----
-if (url === '/api/agents/register' && method === 'POST') {
-  const { name, owner_email, public_key } = req.body;
-  if (!name || !owner_email || !public_key)
-    return res.status(400).json({ error: 'Missing fields' });
-
+// ----- INTERACTIONS (REAL Supabase) -----
+if (url === '/api/interactions' && method === 'GET') {
+  const { searchParams } = new URL(req.url, `http://${req.headers.host}`);
+  const agentId = searchParams.get('agent_id');
+  if (!agentId) {
+    return res.status(400).json({ error: 'agent_id query parameter required' });
+  }
   try {
-    // 1. Insert the new agent
-    const { data: agent, error: insertError } = await supabase
-      .from('agents')
+    const { data, error } = await supabase
+      .from('interactions')
+      .select('*')
+      .eq('to_agent_id', agentId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error) throw error;
+    return res.status(200).json({ success: true, interactions: data });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+}
+
+if (url === '/api/interactions' && method === 'POST') {
+  const { from_agent_id, to_agent_id, outcome, type, rating } = req.body;
+  if (!from_agent_id || !to_agent_id || !outcome) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+  try {
+    const { data, error } = await supabase
+      .from('interactions')
       .insert([{
-        name,
-        owner_email,
-        public_key,
-        verification_level: 'unverified'
+        from_agent_id,
+        to_agent_id,
+        outcome,
+        type: type || 'api_call',
+        rating: rating || null
       }])
       .select()
       .single();
-
-    if (insertError) throw insertError;
-
-    // 2. Generate a real API key (random string)
-    const apiKey = 'ak_' + Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
-
-    // 3. Store the API key hash (using a simple hash for now)
-    const simpleHash = require('crypto').createHash('sha256').update(apiKey).digest('hex');
-
-    const { error: keyError } = await supabase
-      .from('api_keys')
-      .insert([{
-        agent_id: agent.id,
-        key_hash: simpleHash,
-        key_prefix: apiKey.substring(0, 8)
-      }]);
-
-    if (keyError) throw keyError;
-
-    // 4. Return success with real agent and API key
-    return res.status(200).json({
-      success: true,
-      agent: {
-        id: agent.id,
-        name: agent.name,
-        owner_email: agent.owner_email,
-        verification_level: agent.verification_level
-      },
-      api_key: apiKey,
-      message: 'Agent registered successfully. Save your API key!'
-    });
+    if (error) throw error;
+    return res.status(200).json({ success: true, interaction: data });
   } catch (err) {
-    console.error('Registration error:', err);
     return res.status(500).json({ error: err.message });
   }
 }
