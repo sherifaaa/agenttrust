@@ -8,12 +8,12 @@ export default async function handler(req, res) {
   const url = req.url;
   const method = req.method;
 
-  // Health check (test this first)
+  // Health check
   if (url === '/api/hello' && method === 'GET') {
     return res.status(200).json({ message: 'AgentTrust API ready' });
   }
 
-  // Minimal registration (no database – will return test_ id)
+  // Registration (test version, no database)
   if (url === '/api/agents/register' && method === 'POST') {
     const { name, owner_email, public_key } = req.body;
     if (!name || !owner_email || !public_key) {
@@ -31,11 +31,10 @@ export default async function handler(req, res) {
     });
   }
 
-  // Ping endpoint (for testing)
+  // Ping
   if (url === '/api/ping' && method === 'GET') {
     return res.status(200).send('pong');
   }
 
-  // Catch all other requests
   return res.status(404).json({ error: 'Endpoint not found' });
 }
