@@ -110,7 +110,8 @@
 </div>
 
 <script>
-    const API_BASE = 'https://agenttrust-8fjl.vercel.app/api';
+    // FIXED: API_BASE with quotes and correct URL
+    const API_BASE = 'https://agenttrust-ufyf.vercel.app/api';
 
     async function registerAgent() {
         const name = document.getElementById('agentName').value;
@@ -121,7 +122,8 @@
             return;
         }
         try {
-            const res = await fetch(`${API_BASE}/agents/register`, {
+            // Using /register endpoint (not /agents/register)
+            const res = await fetch(`${API_BASE}/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name, owner_email: email, public_key: pubKey })
@@ -137,8 +139,6 @@
     }
 
     async function loadAgents() {
-        // For a real dashboard, you'd have an endpoint like /api/agents?owner_email=...
-        // Since we don't have that yet, we'll show a message and allow manual reputation checks.
         const agentsListDiv = document.getElementById('agentsList');
         agentsListDiv.innerHTML = '<p>To list agents, please use Supabase Table Editor. Here is a demo manual entry:</p>';
         agentsListDiv.innerHTML += `
@@ -167,6 +167,7 @@
 
     async function fetchReputation(agentId) {
         try {
+            // This endpoint may not exist in the new project; you can add it later.
             const res = await fetch(`${API_BASE}/agents/${agentId}/reputation`);
             const data = await res.json();
             document.getElementById('repResult').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
